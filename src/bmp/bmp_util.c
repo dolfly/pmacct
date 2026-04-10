@@ -200,13 +200,28 @@ void bmp_link_misc_structs(struct bgp_misc_structs *bms)
 
   bms->bgp_msg_open_router_id_check = NULL;
 
-  if (!bms->is_thread && !bms->dump_backend_methods) bms->skip_rib = TRUE;
+  if (!bms->is_thread && !bms->dump_backend_methods && !bms->has_blackhole) {
+    bms->skip_rib = TRUE;
+  }
 
   bms->tag = &bmp_logdump_tag;
   bms->tag_map = config.bmp_daemon_tag_map;
   bms->tag_peer = &bmp_logdump_tag_peer;
   bms->bgp_table_info_delete_tag_find = bgp_table_info_delete_tag_find_bmp;
   bms->msglog_label_filter = &config.bmp_daemon_msglog_label_filter;
+  bms->bgp_peer_get = bgp_peer_get_bmp;
+}
+
+struct bgp_peer *bgp_peer_get_bmp(struct bgp_peer *peer)
+{
+  struct bmp_peer *bmpp = NULL;
+
+  if (peer && peer->bmp_se) {
+    bmpp = peer->bmp_se;
+    return &bmpp->self;
+  }
+
+  return NULL;
 }
 
 int bgp_peer_cmp_bmp(const void *a, const void *b)

@@ -1,6 +1,6 @@
 /*
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2021 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2026 by Paolo Lucente
 */
 
 /*
@@ -53,7 +53,7 @@ void bgp_blackhole_daemon_wrapper()
 
   bgp_blackhole_zmq_host = malloc(sizeof(struct p_zmq_host));
   if (!bgp_blackhole_zmq_host) {
-    Log(LOG_ERR, "ERROR ( %s/%s ): Unable to malloc() bgp_blackhole_zmq_host. Terminating thread.\n", config.name, bgp_misc_db->log_str);
+    Log(LOG_ERR, "ERROR ( %s/core/BH ): Unable to malloc() bgp_blackhole_zmq_host. Terminating thread.\n", config.name);
     exit_gracefully(1);
   }
   else memset(bgp_blackhole_zmq_host, 0, sizeof(struct p_zmq_host));
@@ -66,7 +66,7 @@ void bgp_blackhole_daemon_wrapper()
   /* giving a kick to the BGP blackhole thread */
   send_to_pool(bgp_blackhole_pool, bgp_blackhole_daemon, NULL);
 #else
-  Log(LOG_ERR, "ERROR ( %s/%s ): BGP BlackHole feature requires compiling with --enable-zmq.\n", config.name, bgp_misc_db->log_str);
+  Log(LOG_ERR, "ERROR ( %s/core/BH ): BGP BlackHole feature requires compiling with --enable-zmq.\n", config.name);
   exit_gracefully(1);
 #endif
 }
@@ -117,7 +117,12 @@ int bgp_blackhole_daemon()
 {
   struct bgp_misc_structs *m_data = bgp_blackhole_misc_db;
   struct bgp_blackhole_itc bbitc;
+  struct bgp_peer *peer = NULL;
   int bh_state;
+
+  /* debug vars */
+  char bgp_peer_str[INET6_ADDRSTRLEN], prefix_str[PREFIX_STRLEN], nexthop_str[INET6_ADDRSTRLEN];
+  char *aspath, empty[] = "";
  
   afi_t afi;
   safi_t safi;
@@ -162,13 +167,51 @@ int bgp_blackhole_daemon()
       break;
     }
 
+    if (config.debug) {
+      if (bbitc.peer->type == FUNC_TYPE_BMP) {
+       peer = inter_domain_misc_dbs[FUNC_TYPE_BMP].bgp_peer_get(bbitc.peer);
+      }
+      else {
+       peer = bbitc.peer;
+      }
+
+      bgp_peer_print(peer, bgp_peer_str, INET6_ADDRSTRLEN);
+      prefix2str(bbitc.p, prefix_str, PREFIX_STRLEN);
+
+      if (bbitc.attr) {
+        if (bbitc.attr->mp_nexthop.family) {
+         addr_to_str2(nexthop_str, &bbitc.attr->mp_nexthop, bbitc.attr->mp_nexthop.family);
+       }
+        else {
+         inet_ntop(AF_INET, &bbitc.attr->nexthop, nexthop_str, INET6_ADDRSTRLEN);
+       }
+
+        aspath = bbitc.attr->aspath ? bbitc.attr->aspath->str : empty;
+      }
+      else {
+       memset(nexthop_str, 0, INET6_ADDRSTRLEN);
+      }
+
+      Log(LOG_DEBUG, "DEBUG ( %s/%s ): [%s] RTBH intercepted prefix=%s nexthop=%s as_path='%s'\n",
+         config.name, bgp_blackhole_misc_db->log_str, bgp_peer_str, prefix_str, nexthop_str, aspath);
+    }
+
+/*
+    XXX:
+
     ret = bgp_lookup_node_vector_unicast(bbitc.p, bbitc.peer, m_data->bnv);
 
     bh_state = bgp_blackhole_validate(bbitc.p, bbitc.peer, bbitc.attr, m_data->bnv); 
-    (void)bh_state;
     // XXX: process state 
+*/
 
-    // XXX: free not needed alloc'd structs
+    if (bbitc.attr->aspath) aspath_free(bbitc.attr->aspath);
+    if (bbitc.attr->community) community_free(bbitc.attr->community);
+    if (bbitc.attr->ecommunity) ecommunity_free(bbitc.attr->ecommunity);
+    if (bbitc.attr->lcommunity) lcommunity_free(bbitc.attr->lcommunity);
+    prefix_free(bbitc.p);
+    free(bbitc.attr);
+    free(bbitc.peer);
   }
 
   return SUCCESS;
@@ -206,7 +249,7 @@ int bgp_blackhole_evaluate_comms(void *a)
 int bgp_blackhole_instrument(struct bgp_peer *peer, struct prefix *p, void *a, afi_t afi, safi_t safi)
 {
   struct bgp_misc_structs *m_data = bgp_blackhole_misc_db;
-  struct bgp_attr *acopy, *attr = (struct bgp_attr *) a;
+  struct bgp_attr *attr_copy, *attr = (struct bgp_attr *) a;
   struct prefix *pcopy;
   struct bgp_peer *peer_copy;
   struct bgp_blackhole_itc bbitc;
@@ -216,23 +259,23 @@ int bgp_blackhole_instrument(struct bgp_peer *peer, struct prefix *p, void *a, a
   pcopy = prefix_new();
   prefix_copy(pcopy, p);
 
-  acopy = malloc(sizeof(struct bgp_attr));
-  memcpy(acopy, attr, sizeof(struct bgp_attr));
+  attr_copy = malloc(sizeof(struct bgp_attr));
+  memcpy(attr_copy, attr, sizeof(struct bgp_attr));
 
   peer_copy = malloc(sizeof(struct bgp_peer));
   memcpy(peer_copy, peer, sizeof(struct bgp_peer));
 
-  if (attr->aspath) acopy->aspath = aspath_dup(attr->aspath);
-  if (attr->community) acopy->community = community_dup(attr->community);
-  if (attr->ecommunity) acopy->ecommunity = ecommunity_dup(attr->ecommunity);
-  if (attr->lcommunity) acopy->lcommunity = lcommunity_dup(attr->lcommunity);
+  if (attr->aspath) attr_copy->aspath = aspath_dup(attr->aspath);
+  if (attr->community) attr_copy->community = community_dup(attr->community);
+  if (attr->ecommunity) attr_copy->ecommunity = ecommunity_dup(attr->ecommunity);
+  if (attr->lcommunity) attr_copy->lcommunity = lcommunity_dup(attr->lcommunity);
 
   memset(&bbitc, 0, sizeof(bbitc));
   bbitc.peer = peer_copy;
   bbitc.afi = afi;
   bbitc.safi = safi;
   bbitc.p = pcopy;
-  bbitc.attr = acopy;
+  bbitc.attr = attr_copy;
 
   bgp_blackhole_zmq_host = m_data->bgp_blackhole_zmq_host;
   ret = p_zmq_send_bin(&bgp_blackhole_zmq_host->sock_inproc, &bbitc, sizeof(bbitc), FALSE);

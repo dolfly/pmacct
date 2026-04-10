@@ -1,6 +1,6 @@
 /*  
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2025 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2026 by Paolo Lucente
 */
 
 /*
@@ -1340,7 +1340,7 @@ int bgp_nlri_parse(struct bgp_msg_data *bmd, void *attr, struct bgp_attr_extra *
       bmd->is_blackhole = bgp_blackhole_evaluate_comms(attr);
 
       /* let's process withdraws before withdrawing */  
-      if (!attr && bmd->is_blackhole) {
+      if (!attr) {
 	bgp_blackhole_instrument(peer, &p, attr, info->afi, info->safi);
       }
     }

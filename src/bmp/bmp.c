@@ -1,6 +1,6 @@
 /*  
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2025 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2026 by Paolo Lucente
 */
 
 /*
@@ -35,6 +35,9 @@
 #endif
 #ifdef WITH_KAFKA
 #include "kafka_common.h"
+#endif
+#if defined WITH_ZMQ
+#include "zmq_common.h"
 #endif
 #if defined WITH_AVRO
 #include "plugin_cmn_avro.h"
@@ -156,6 +159,25 @@ int skinny_bmp_daemon()
 
     /* Let's give the RPKI thread some advantage to create its structures */
     sleep(DEFAULT_SLOTH_SLEEP_TIME);
+  }
+
+  if (config.bgp_blackhole_stdcomm_list) {
+#if defined WITH_ZMQ
+    struct p_zmq_host *bgp_blackhole_zmq_host = NULL;
+    char inproc_blackhole_str[] = "inproc://bgp_blackhole";
+    (void)inproc_blackhole_str;
+
+    bgp_blackhole_daemon_wrapper();
+
+    /* Let's give the BGP blackhole thread some advantage to create its structures */
+    sleep(DEFAULT_SLOTH_SLEEP_TIME);
+
+    bgp_blackhole_zmq_host = bgp_blackhole_misc_db->bgp_blackhole_zmq_host;
+    p_zmq_push_connect_setup(bgp_blackhole_zmq_host);
+#else
+    Log(LOG_ERR, "ERROR ( %s/%s ): 'bgp_blackhole_stdcomm_list' requires compiling with --enable-zmq. Exiting ..\n", config.name, bgp_misc_db->log_str);
+    exit_gracefully(1);
+#endif
   }
 
   if (config.bmp_daemon_msglog_file || config.bmp_daemon_msglog_amqp_routing_key || config.bmp_daemon_msglog_kafka_topic) {
@@ -1063,6 +1085,8 @@ void bmp_prepare_thread()
     memset(bmp_misc_db->bnv, 0, sizeof(struct bgp_node_vector));
   }
 
+  if (config.bgp_blackhole_stdcomm_list) bmp_misc_db->has_blackhole = TRUE;
+
   bmp_misc_db->log_str = malloc(strlen("core/BMP") + 1);
   strcpy(bmp_misc_db->log_str, "core/BMP");
 }
@@ -1078,6 +1102,8 @@ void bmp_prepare_daemon()
     bmp_misc_db->bnv = malloc(sizeof(struct bgp_node_vector));
     memset(bmp_misc_db->bnv, 0, sizeof(struct bgp_node_vector));
   }
+
+  if (config.bgp_blackhole_stdcomm_list) bmp_misc_db->has_blackhole = TRUE;
 
   bmp_misc_db->log_str = malloc(strlen("core") + 1);
   strcpy(bmp_misc_db->log_str, "core");

@@ -1,6 +1,6 @@
 /*
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2025 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2026 by Paolo Lucente
 */
 
 /*
@@ -29,6 +29,7 @@
 /* prototypes */
 extern int bgp_peer_cmp_bmp(const void *, const void *);
 extern int bgp_peer_host_addr_peer_dist_cmp(const void *, const void *);
+extern struct bgp_peer *bgp_peer_get_bmp(struct bgp_peer *);
 
 extern char *bmp_get_and_check_length(char **, u_int32_t *, u_int32_t);
 extern int bmp_jump_offset(char **, u_int32_t *, u_int32_t);

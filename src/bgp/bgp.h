@@ -1,6 +1,6 @@
 /*  
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2025 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2026 by Paolo Lucente
 */
 
 /*
@@ -317,6 +317,7 @@ struct bgp_misc_structs {
   int (*bgp_msg_open_router_id_check)(struct bgp_msg_data *);
 
   void *bgp_blackhole_zmq_host;
+  struct bgp_peer *(*bgp_peer_get)(struct bgp_peer *);
 
   char *tag_map;
   bgp_tag_t *tag;
@@ -410,6 +411,7 @@ struct bgp_lg_rep_gp_data {
 #include "bgp_msg.h"
 #include "bgp_lookup.h"
 #include "bgp_util.h"
+#include "bgp_blackhole.h"
 #include "bgp_ls.h"
 
 /* prototypes */
