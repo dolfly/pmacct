@@ -374,6 +374,13 @@ struct configuration {
   char *bgp_daemon_stdcomm_pattern_to_asn;
   char *bgp_daemon_lrgcomm_pattern_to_asn;
   char *bgp_blackhole_stdcomm_list;
+  char *bgp_blackhole_msglog_file;
+  char *bgp_blackhole_msglog_amqp_routing_key;
+  char *bgp_blackhole_msglog_kafka_topic;
+  char *bgp_blackhole_dump_file;
+  char *bgp_blackhole_dump_latest_file;
+  char *bgp_blackhole_dump_amqp_routing_key;
+  char *bgp_blackhole_dump_kafka_topic;
   int bgp_daemon_peer_as_src_type;
   int bgp_daemon_src_std_comm_type;
   int bgp_daemon_src_ext_comm_type;

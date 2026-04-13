@@ -267,7 +267,7 @@ void skinny_bgp_daemon_online()
 
     if (config.bgp_daemon_msglog_amqp_routing_key) {
 #ifdef WITH_RABBITMQ
-      bgp_daemon_msglog_init_amqp_host();
+      bgp_daemon_msglog_init_amqp_host(&bgp_daemon_msglog_amqp_host);
       p_amqp_connect_to_publish(&bgp_daemon_msglog_amqp_host);
 #else
       Log(LOG_WARNING, "WARN ( %s/%s ): p_amqp_connect_to_publish() not possible due to missing --enable-rabbitmq\n", config.name, bgp_misc_db->log_str);
@@ -276,7 +276,7 @@ void skinny_bgp_daemon_online()
 
     if (config.bgp_daemon_msglog_kafka_topic) {
 #ifdef WITH_KAFKA
-      bgp_daemon_msglog_init_kafka_host();
+      bgp_daemon_msglog_init_kafka_host(&bgp_daemon_msglog_kafka_host);
 #else
       Log(LOG_WARNING, "WARN ( %s/%s ): p_kafka_connect_to_produce() not possible due to missing --enable-kafka\n", config.name, bgp_misc_db->log_str);
 #endif
@@ -780,7 +780,7 @@ void skinny_bgp_daemon_online()
         time_t last_fail = P_broker_timers_get_last_fail(&bgp_daemon_msglog_amqp_host.btimers);
 
 	if (last_fail && ((last_fail + P_broker_timers_get_retry_interval(&bgp_daemon_msglog_amqp_host.btimers)) <= bgp_misc_db->log_tstamp.tv_sec)) {
-          bgp_daemon_msglog_init_amqp_host();
+          bgp_daemon_msglog_init_amqp_host(&bgp_daemon_msglog_amqp_host);
           p_amqp_connect_to_publish(&bgp_daemon_msglog_amqp_host);
 	}
       }
@@ -790,8 +790,9 @@ void skinny_bgp_daemon_online()
       if (config.bgp_daemon_msglog_kafka_topic) {
         time_t last_fail = P_broker_timers_get_last_fail(&bgp_daemon_msglog_kafka_host.btimers);
 
-        if (last_fail && ((last_fail + P_broker_timers_get_retry_interval(&bgp_daemon_msglog_kafka_host.btimers)) <= bgp_misc_db->log_tstamp.tv_sec))
-          bgp_daemon_msglog_init_kafka_host();
+        if (last_fail && ((last_fail + P_broker_timers_get_retry_interval(&bgp_daemon_msglog_kafka_host.btimers)) <= bgp_misc_db->log_tstamp.tv_sec)) {
+          bgp_daemon_msglog_init_kafka_host(&bgp_daemon_msglog_kafka_host);
+	}
 
 	if (config.bgp_daemon_msglog_kafka_avro_schema_registry) {
 #ifdef WITH_SERDES

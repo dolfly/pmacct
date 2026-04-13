@@ -1,6 +1,6 @@
 /*  
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2025 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2026 by Paolo Lucente
 */
 
 /*
@@ -105,9 +105,9 @@ extern void bmp_dump_se_ll_destroy(struct bmp_dump_se_ll *);
 
 extern void bmp_handle_dump_event(int);
 extern int bmp_dump_event_runner(struct pm_dump_runner *);
-extern void bmp_daemon_msglog_init_amqp_host();
+extern void bmp_daemon_msglog_init_amqp_host(void *);
 extern void bmp_dump_init_amqp_host(void *);
-extern int bmp_daemon_msglog_init_kafka_host();
+extern int bmp_daemon_msglog_init_kafka_host(void *);
 extern int bmp_dump_init_kafka_host(void *);
 
 #if defined WITH_AVRO

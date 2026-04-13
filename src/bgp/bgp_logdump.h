@@ -1,6 +1,6 @@
 /*  
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2025 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2026 by Paolo Lucente
 */
 
 /*
@@ -73,9 +73,9 @@ extern int bgp_peer_dump_init(struct bgp_peer *, bgp_tag_t *, int, int);
 extern int bgp_peer_dump_close(struct bgp_peer *, bgp_tag_t *, struct bgp_dump_stats *, int, int);
 extern void bgp_handle_dump_event(int);
 extern int bgp_table_dump_event_runner(struct pm_dump_runner *);
-extern void bgp_daemon_msglog_init_amqp_host();
+extern void bgp_daemon_msglog_init_amqp_host(void *);
 extern void bgp_table_dump_init_amqp_host(void *);
-extern int bgp_daemon_msglog_init_kafka_host();
+extern int bgp_daemon_msglog_init_kafka_host(void *);
 extern int bgp_table_dump_init_kafka_host(void *);
 
 #if defined WITH_JANSSON

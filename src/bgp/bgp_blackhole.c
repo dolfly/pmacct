@@ -27,6 +27,12 @@
 #if defined WITH_ZMQ
 #include "zmq_common.h"
 #endif
+#if defined WITH_RABBITMQ
+#include "amqp_common.h"
+#endif
+#ifdef WITH_KAFKA
+#include "kafka_common.h"
+#endif
 
 /* Global variables */
 thread_pool_t *bgp_blackhole_pool;
@@ -118,7 +124,6 @@ int bgp_blackhole_daemon()
   struct bgp_misc_structs *m_data = bgp_blackhole_misc_db;
   struct bgp_blackhole_itc bbitc;
   struct bgp_peer *peer = NULL;
-  int bh_state;
 
   /* debug vars */
   char bgp_peer_str[INET6_ADDRSTRLEN], prefix_str[PREFIX_STRLEN], nexthop_str[INET6_ADDRSTRLEN];
@@ -134,6 +139,8 @@ int bgp_blackhole_daemon()
   bgp_blackhole_zmq_host = m_data->bgp_blackhole_zmq_host;
   p_zmq_pull_bind_setup(bgp_blackhole_zmq_host);
 
+  /* output stuff */
+  bgp_blackhole_init_output(m_data);
   bgp_blackhole_init_dummy_peer(&bgp_blackhole_peer);
 
   bgp_blackhole_db = &inter_domain_routing_dbs[FUNC_TYPE_BGP_BLACKHOLE];
@@ -149,6 +156,8 @@ int bgp_blackhole_daemon()
   }
 
   bgp_blackhole_link_misc_structs(m_data);
+
+  bgp_blackhole_log_init(&bgp_blackhole_peer);
 
   for (;;) {
     ret = p_zmq_recv_poll(&bgp_blackhole_zmq_host->sock_inproc, (DEFAULT_SLOTH_SLEEP_TIME * 1000));
@@ -307,3 +316,196 @@ int bgp_blackhole_validate(struct prefix *p, struct bgp_peer *peer, struct bgp_a
   return bh_state;
 }
 #endif
+
+int bgp_blackhole_log_msg(struct bgp_peer *bh_peer, struct bgp_blackhole_itc *bbitc, char *event_type, int log_type)
+{
+  // struct bgp_peer *peer;
+  int ret = 0, amqp_ret = 0, kafka_ret = 0, etype = BGP_LOGDUMP_ET_NONE;
+
+  if (!bbitc || !bbitc->peer || !bbitc->p || !event_type) {
+    return ERR; /* missing required parameters */
+  }
+
+  if (bbitc->peer->type == FUNC_TYPE_BMP) {
+    // peer = inter_domain_misc_dbs[FUNC_TYPE_BMP].bgp_peer_get(bbitc->peer);
+  }
+  else {
+    // peer = bbitc->peer;
+  }
+
+  if (!bh_peer->log) {
+    return ERR; /* missing any output method */
+  }
+
+  if (!strcmp(event_type, "dump")) etype = BGP_LOGDUMP_ET_DUMP;
+  else if (!strcmp(event_type, "log")) etype = BGP_LOGDUMP_ET_LOG;
+
+  if ((config.bgp_blackhole_msglog_amqp_routing_key && etype == BGP_LOGDUMP_ET_LOG) ||
+      (config.bgp_blackhole_dump_amqp_routing_key && etype == BGP_LOGDUMP_ET_DUMP)) {
+#ifdef WITH_RABBITMQ
+    p_amqp_set_routing_key(bh_peer->log->amqp_host, bh_peer->log->filename);
+#endif
+  }
+
+  if ((config.bgp_blackhole_msglog_kafka_topic && etype == BGP_LOGDUMP_ET_LOG) ||
+      (config.bgp_blackhole_dump_kafka_topic && etype == BGP_LOGDUMP_ET_DUMP)) {
+#ifdef WITH_KAFKA
+    p_kafka_set_topic(bh_peer->log->kafka_host, bh_peer->log->filename);
+#endif
+  }
+
+#ifdef WITH_JANSSON
+  {
+    json_t *obj = json_object();
+
+    // XXX
+
+    if ((config.bgp_blackhole_msglog_file && etype == BGP_LOGDUMP_ET_LOG) ||
+       (config.bgp_blackhole_dump_file && etype == BGP_LOGDUMP_ET_DUMP)) {
+      write_and_free_json(bh_peer->log->fd, obj);
+    }
+
+    if ((config.bgp_blackhole_msglog_amqp_routing_key && etype == BGP_LOGDUMP_ET_LOG) ||
+       (config.bgp_blackhole_dump_amqp_routing_key && etype == BGP_LOGDUMP_ET_DUMP)) {
+      // add_writer_name_and_pid_json(obj, &bms->writer_id_tokens);
+#ifdef WITH_RABBITMQ
+      amqp_ret = write_and_free_json_amqp(bh_peer->log->amqp_host, obj);
+      p_amqp_unset_routing_key(bh_peer->log->amqp_host);
+#endif
+    }
+
+    if ((config.bgp_blackhole_msglog_kafka_topic && etype == BGP_LOGDUMP_ET_LOG) ||
+        (config.bgp_blackhole_dump_kafka_topic && etype == BGP_LOGDUMP_ET_DUMP)) {
+      // add_writer_name_and_pid_json(obj, &bms->writer_id_tokens);
+#ifdef WITH_KAFKA
+      kafka_ret = write_and_free_json_kafka(bh_peer->log->kafka_host, obj);
+      p_kafka_unset_topic(bh_peer->log->kafka_host);
+#endif
+    }
+  }
+#endif
+
+  return (ret | amqp_ret | kafka_ret);
+}
+
+void bgp_blackhole_init_output(struct bgp_misc_structs *m_data)
+{
+  if (config.bgp_blackhole_msglog_file || config.bgp_blackhole_msglog_amqp_routing_key || config.bgp_blackhole_msglog_kafka_topic) {
+    if (config.bgp_blackhole_msglog_file) m_data->msglog_backend_methods++;
+    if (config.bgp_blackhole_msglog_amqp_routing_key) m_data->msglog_backend_methods++;
+    if (config.bgp_blackhole_msglog_kafka_topic) m_data->msglog_backend_methods++;
+
+    if (m_data->msglog_backend_methods > 1) {
+      Log(LOG_ERR, "ERROR ( %s/%s ): bgp_blackhole_msglog_file, bgp_blackhole_msglog_amqp_routing_key and bgp_blackhole_msglog_kafka_topic are mutually exclusive. Terminating thread.\n", config.name, m_data->log_str);
+      exit_gracefully(1);
+    }
+
+    m_data->peers_log = malloc(1 * sizeof(struct bgp_peer_log));
+    if (!m_data->peers_log) {
+      Log(LOG_ERR, "ERROR ( %s/%s ): Unable to malloc() BGP Blackhole peers log structure. Terminating thread.\n", config.name, m_data->log_str);
+      exit_gracefully(1);
+    }
+    memset(m_data->peers_log, 0, 1 * sizeof(struct bgp_peer_log));
+    bgp_peer_log_seq_init(&m_data->log_seq);
+
+    if (config.bgp_blackhole_msglog_amqp_routing_key) {
+#ifdef WITH_RABBITMQ
+      bgp_daemon_msglog_init_amqp_host(&bgp_blackhole_msglog_amqp_host); // XXX
+      p_amqp_connect_to_publish(&bgp_blackhole_msglog_amqp_host);
+#else
+      Log(LOG_WARNING, "WARN ( %s/%s ): p_amqp_connect_to_publish() not possible due to missing --enable-rabbitmq\n", config.name, m_data->log_str);
+#endif
+    }
+
+    if (config.bgp_blackhole_msglog_kafka_topic) {
+#ifdef WITH_KAFKA
+      bgp_daemon_msglog_init_kafka_host(&bgp_blackhole_msglog_kafka_host); // XXX
+#else
+      Log(LOG_WARNING, "WARN ( %s/%s ): p_kafka_connect_to_produce() not possible due to missing --enable-kafka\n", config.name, m_data->log_str);
+#endif
+    }
+  }
+
+  if (config.bgp_blackhole_dump_file || config.bgp_blackhole_dump_amqp_routing_key || config.bgp_blackhole_dump_kafka_topic) {
+    if (config.bgp_blackhole_dump_file) m_data->dump_backend_methods++;
+    if (config.bgp_blackhole_dump_amqp_routing_key) m_data->dump_backend_methods++;
+    if (config.bgp_blackhole_dump_kafka_topic) m_data->dump_backend_methods++;
+
+    if (m_data->dump_backend_methods > 1) {
+      Log(LOG_ERR, "ERROR ( %s/%s ): bgp_blackhole_dump_file, bgp_blackhole_dump_amqp_routing_key and bgp_blackhole_dump_kafka_topic are mutually exclusive. Terminating thread.\n", config.name, m_data->log_str);
+      exit_gracefully(1);
+    }
+  }
+}
+
+int bgp_blackhole_log_init(struct bgp_peer *peer)
+{
+  struct bgp_misc_structs *m_data = bgp_blackhole_misc_db;
+  int ret = 0, amqp_ret = 0, kafka_ret = 0;
+
+  if (!peer) return ERR;
+
+  if (config.bgp_blackhole_msglog_file) {
+    m_data->peers_log[0].fd = open_output_file(config.bgp_blackhole_msglog_file, "a", FALSE);
+    strcpy(m_data->peers_log[0].filename, config.bgp_blackhole_msglog_file);
+  }
+
+#ifdef WITH_RABBITMQ
+  if (config.bgp_blackhole_msglog_amqp_routing_key) {
+    m_data->peers_log[0].amqp_host = m_data->msglog_amqp_host;
+    strcpy(m_data->peers_log[0].filename, config.bgp_blackhole_msglog_amqp_routing_key);
+  }
+#endif
+
+#ifdef WITH_KAFKA
+  if (config.bgp_blackhole_msglog_kafka_topic) {
+    m_data->peers_log[0].kafka_host = m_data->msglog_kafka_host;
+    strcpy(m_data->peers_log[0].filename, config.bgp_blackhole_msglog_kafka_topic);
+  }
+#endif
+
+  peer->log = &m_data->peers_log[0];
+  m_data->peers_log[0].refcnt++;
+
+  #ifdef WITH_RABBITMQ
+  if (config.bgp_blackhole_msglog_amqp_routing_key) {
+    p_amqp_set_routing_key(peer->log->amqp_host, peer->log->filename);
+  }
+#endif
+
+#ifdef WITH_KAFKA
+  if (config.bgp_blackhole_msglog_kafka_topic) {
+    p_kafka_set_topic(peer->log->kafka_host, peer->log->filename);
+  }
+#endif
+
+#ifdef WITH_JANSSON
+  {
+    json_t *obj = json_object();
+
+    // XXX
+  
+    if (config.bgp_blackhole_msglog_file) {
+      write_and_free_json(peer->log->fd, obj);
+    }
+
+#ifdef WITH_RABBITMQ
+    if (config.bgp_blackhole_msglog_amqp_routing_key) {
+      // add_writer_name_and_pid_json(obj, &bms->writer_id_tokens);
+      amqp_ret = write_and_free_json_amqp(peer->log->amqp_host, obj);
+      p_amqp_unset_routing_key(peer->log->amqp_host);
+    }
+#endif
+
+#ifdef WITH_KAFKA
+    if (config.bgp_blackhole_msglog_kafka_topic) {
+      // add_writer_name_and_pid_json(obj, &bms->writer_id_tokens);
+      kafka_ret = write_and_free_json_kafka(peer->log->kafka_host, obj);
+      p_kafka_unset_topic(peer->log->kafka_host);
+    }
+#endif
+  }
+#endif
+
+  return (ret | amqp_ret | kafka_ret);
+}

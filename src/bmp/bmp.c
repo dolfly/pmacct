@@ -215,7 +215,7 @@ int skinny_bmp_daemon()
 
     if (config.bmp_daemon_msglog_amqp_routing_key) {
 #ifdef WITH_RABBITMQ
-      bmp_daemon_msglog_init_amqp_host();
+      bmp_daemon_msglog_init_amqp_host(&bmp_daemon_msglog_amqp_host);
       p_amqp_connect_to_publish(&bmp_daemon_msglog_amqp_host);
 
       if (!config.bmp_daemon_msglog_amqp_retry)
@@ -227,7 +227,7 @@ int skinny_bmp_daemon()
 
     if (config.bmp_daemon_msglog_kafka_topic) {
 #ifdef WITH_KAFKA
-      bmp_daemon_msglog_init_kafka_host();
+      bmp_daemon_msglog_init_kafka_host(&bmp_daemon_msglog_kafka_host);
 #else
       Log(LOG_WARNING, "WARN ( %s/%s ): p_kafka_connect_to_produce() not possible due to missing --enable-kafka\n", config.name, bmp_misc_db->log_str);
 #endif
@@ -744,7 +744,7 @@ int skinny_bmp_daemon()
         time_t last_fail = P_broker_timers_get_last_fail(&bmp_daemon_msglog_amqp_host.btimers);
 
         if (last_fail && ((last_fail + P_broker_timers_get_retry_interval(&bmp_daemon_msglog_amqp_host.btimers)) <= bmp_misc_db->log_tstamp.tv_sec)) {
-          bmp_daemon_msglog_init_amqp_host();
+          bmp_daemon_msglog_init_amqp_host(&bmp_daemon_msglog_amqp_host);
           p_amqp_connect_to_publish(&bmp_daemon_msglog_amqp_host);
         }
       }
@@ -754,8 +754,9 @@ int skinny_bmp_daemon()
       if (config.bmp_daemon_msglog_kafka_topic) {
         time_t last_fail = P_broker_timers_get_last_fail(&bmp_daemon_msglog_kafka_host.btimers);
 
-        if (last_fail && ((last_fail + P_broker_timers_get_retry_interval(&bmp_daemon_msglog_kafka_host.btimers)) <= bmp_misc_db->log_tstamp.tv_sec))
-          bmp_daemon_msglog_init_kafka_host();
+        if (last_fail && ((last_fail + P_broker_timers_get_retry_interval(&bmp_daemon_msglog_kafka_host.btimers)) <= bmp_misc_db->log_tstamp.tv_sec)) {
+	  bmp_daemon_msglog_init_kafka_host(&bmp_daemon_msglog_kafka_host);
+	}
 
 	if (config.bmp_daemon_msglog_kafka_avro_schema_registry) {
 #ifdef WITH_SERDES

@@ -1,6 +1,6 @@
 /*
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2023 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2026 by Paolo Lucente
 */
 
 /*
@@ -117,6 +117,7 @@ extern int write_binary_kafka(void *, void *, size_t);
 /* global vars */
 extern struct p_kafka_host kafkap_kafka_host;
 extern struct p_kafka_host bgp_daemon_msglog_kafka_host;
+extern struct p_kafka_host bgp_blackhole_msglog_kafka_host;
 extern struct p_kafka_host bmp_daemon_msglog_kafka_host;
 extern struct p_kafka_host sfacctd_counter_kafka_host;
 extern struct p_kafka_host telemetry_daemon_msglog_kafka_host;

@@ -1610,6 +1610,16 @@ void bgp_blackhole_link_misc_structs(struct bgp_misc_structs *m_data)
   m_data->table_per_peer_hash = BGP_ASPATH_HASH_PATHID;
   m_data->route_info_modulo = NULL;
   m_data->bgp_lookup_node_match_cmp = NULL;
+
+#if defined WITH_RABBITMQ
+  m_data->msglog_amqp_host = &bgp_blackhole_msglog_amqp_host;
+#endif
+#if defined WITH_KAFKA
+  m_data->msglog_kafka_host = &bgp_blackhole_msglog_kafka_host;
+#endif
+
+  m_data->peer_str = malloc(strlen("blackhole_router") + 1);
+  strcpy(m_data->peer_str, "blackhole_router");
 }
 
 int bgp_peer_cmp(const void *a, const void *b)

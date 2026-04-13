@@ -312,12 +312,11 @@ struct bgp_misc_structs {
 
   int msglog_backend_methods;
   int dump_backend_methods;
-  int dump_input_backend_methods;
 
   int (*bgp_msg_open_router_id_check)(struct bgp_msg_data *);
 
-  void *bgp_blackhole_zmq_host;
   struct bgp_peer *(*bgp_peer_get)(struct bgp_peer *);
+  void *bgp_blackhole_zmq_host;
 
   char *tag_map;
   bgp_tag_t *tag;

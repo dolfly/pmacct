@@ -28,6 +28,7 @@
 /* Global variables */
 struct p_amqp_host amqpp_amqp_host;
 struct p_amqp_host bgp_daemon_msglog_amqp_host;
+struct p_amqp_host bgp_blackhole_msglog_amqp_host;
 struct p_amqp_host bmp_daemon_msglog_amqp_host;
 struct p_amqp_host sfacctd_counter_amqp_host;
 struct p_amqp_host telemetry_daemon_msglog_amqp_host;
