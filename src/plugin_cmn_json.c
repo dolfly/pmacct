@@ -1,6 +1,6 @@
 /*
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2025 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2026 by Paolo Lucente
 */
 
 /*
@@ -1804,7 +1804,7 @@ json_t *compose_mpls_label_stack_json_data(u_int32_t *label_stack, int ls_len)
   char label_buf[MAX_MPLS_LABEL_LEN];
   char label_idx_buf[MAX_MPLS_LABEL_IDX_LEN];
   char idx_buf[MAX_IDX_LEN];
-  u_int8_t ls_depth = 0;
+  u_int8_t idx_0, ls_depth = 0;
 
   if (!(ls_len % 4)) {
     ls_depth = (ls_len / 4);
@@ -1816,13 +1816,12 @@ json_t *compose_mpls_label_stack_json_data(u_int32_t *label_stack, int ls_len)
   json_t *root = json_array();
   json_t *j_str_tmp = NULL;
 
-  size_t idx_0;
   for (idx_0 = 0; idx_0 < ls_depth; idx_0++) {
     memset(&label_buf, 0, sizeof(label_buf));
     snprintf(label_buf, MAX_MPLS_LABEL_LEN, "%u", *(label_stack + idx_0));
     memset(&idx_buf, 0, sizeof(idx_buf));
     memset(&label_idx_buf, 0, sizeof(label_idx_buf));
-    snprintf(idx_buf, MAX_IDX_LEN, "%zu", idx_0);
+    snprintf(idx_buf, MAX_IDX_LEN, "%u", idx_0);
     strncat(label_idx_buf, idx_buf, (MAX_MPLS_LABEL_IDX_LEN - max_mpls_label_idx_len_dec));
     strncat(label_idx_buf, "-", (MAX_MPLS_LABEL_IDX_LEN - max_mpls_label_idx_len_dec));
     strncat(label_idx_buf, label_buf, (MAX_MPLS_LABEL_IDX_LEN - max_mpls_label_idx_len_dec));
