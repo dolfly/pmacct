@@ -210,96 +210,6 @@ int bgp_peer_log_msg(struct bgp_node *route, struct bgp_info *ri, afi_t afi, saf
           cdada_list_destroy(std_comm_ll);
         }
         else {
-	        json_object_set_new_nocheck(obj, "comms", json_string(attr->community->str));
-        }
-      }
-
-      if (attr->ecommunity) {
-        if (config.bgp_comms_encode_as_array) {
-          cdada_list_t *std_ecomm_ll = generic_delim_str_to_linked_list(attr->ecommunity->str, NULL);
-          size_t ll_size = cdada_list_size(std_ecomm_ll);
-          json_t *root_l1 = compose_str_linked_list_to_json_array_data(std_ecomm_ll, ll_size);
-
-          json_object_set_new_nocheck(obj, "ecomms", root_l1);
-
-          cdada_list_destroy(std_ecomm_ll);
-        }
-        else {
-	        json_object_set_new_nocheck(obj, "ecomms", json_string(attr->ecommunity->str));
-        }
-      }
-
-      if (attr->lcommunity) {
-        if (config.bgp_comms_encode_as_array) {
-          cdada_list_t *std_lcomm_ll = generic_delim_str_to_linked_list(attr->lcommunity->str, NULL);
-          size_t ll_size = cdada_list_size(std_lcomm_ll);
-          json_t *root_l1 = compose_str_linked_list_to_json_array_data(std_lcomm_ll, ll_size);
-
-          json_object_set_new_nocheck(obj, "lcomms", root_l1);
-
-          cdada_list_destroy(std_lcomm_ll);
-        }
-        else {
-	         json_object_set_new_nocheck(obj, "lcomms", json_string(attr->lcommunity->str));
-        }
-      }
-
-      if (attr->community) {
-        if (config.bgp_comms_encode_as_array) {
-          cdada_list_t *std_comm_ll = generic_delim_str_to_linked_list(attr->community->str, NULL);
-          size_t ll_size = cdada_list_size(std_comm_ll);
-          json_t *root_l1 = compose_str_linked_list_to_json_array_data(std_comm_ll, ll_size);
-
-          json_object_set_new_nocheck(obj, "comms", root_l1);
-
-          cdada_list_destroy(std_comm_ll);
-        }
-        else {
-          json_object_set_new_nocheck(obj, "comms", json_string(attr->community->str));
-        }
-      }
-
-      if (attr->ecommunity) {
-        if (config.bgp_comms_encode_as_array) {
-          cdada_list_t *std_ecomm_ll = generic_delim_str_to_linked_list(attr->ecommunity->str, NULL);
-          size_t ll_size = cdada_list_size(std_ecomm_ll);
-          json_t *root_l1 = compose_str_linked_list_to_json_array_data(std_ecomm_ll, ll_size);
-
-          json_object_set_new_nocheck(obj, "ecomms", root_l1);
-
-          cdada_list_destroy(std_ecomm_ll);
-        }
-        else {
-          json_object_set_new_nocheck(obj, "ecomms", json_string(attr->ecommunity->str));
-        }
-      }
-
-      if (attr->lcommunity) {
-        if (config.bgp_comms_encode_as_array) {
-          cdada_list_t *std_lcomm_ll = generic_delim_str_to_linked_list(attr->lcommunity->str, NULL);
-          size_t ll_size = cdada_list_size(std_lcomm_ll);
-          json_t *root_l1 = compose_str_linked_list_to_json_array_data(std_lcomm_ll, ll_size);
-
-          json_object_set_new_nocheck(obj, "lcomms", root_l1);
-
-          cdada_list_destroy(std_lcomm_ll);
-        }
-        else {
-           json_object_set_new_nocheck(obj, "lcomms", json_string(attr->lcommunity->str));
-        }
-      }
-
-      if (attr->community) {
-        if (config.bgp_comms_encode_as_array) {
-          cdada_list_t *std_comm_ll = generic_delim_str_to_linked_list(attr->community->str, NULL);
-          size_t ll_size = cdada_list_size(std_comm_ll);
-          json_t *root_l1 = compose_str_linked_list_to_json_array_data(std_comm_ll, ll_size);
-
-          json_object_set_new_nocheck(obj, "comms", root_l1);
-
-          cdada_list_destroy(std_comm_ll);
-        }
-        else {
           json_object_set_new_nocheck(obj, "comms", json_string(attr->community->str));
         }
       }
@@ -338,14 +248,14 @@ int bgp_peer_log_msg(struct bgp_node *route, struct bgp_info *ri, afi_t afi, saf
         json_object_set_new_nocheck(obj, "origin", json_string(bgp_origin_print(attr->origin)));
       }
       else {
-  json_object_set_new_nocheck(obj, "origin", json_integer((json_int_t)attr->origin));
+        json_object_set_new_nocheck(obj, "origin", json_integer((json_int_t)attr->origin));
       }
 
       if (attr->bitmap & BGP_BMAP_ATTR_LOCAL_PREF)
         json_object_set_new_nocheck(obj, "local_pref", json_integer((json_int_t)attr->local_pref));
 
       if (attr->bitmap & BGP_BMAP_ATTR_MULTI_EXIT_DISC)
-  json_object_set_new_nocheck(obj, "med", json_integer((json_int_t)attr->med));
+        json_object_set_new_nocheck(obj, "med", json_integer((json_int_t)attr->med));
 
       if (attr_extra && (attr_extra->bitmap & BGP_BMAP_ATTR_AIGP))
         json_object_set_new_nocheck(obj, "aigp", json_integer((json_int_t)attr_extra->aigp));
